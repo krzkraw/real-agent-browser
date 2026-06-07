@@ -45,6 +45,27 @@ Ask for origin, destination, dates, and travelers unless already provided. Say t
 - The home form does not expose direct-only. Submit first, then apply `Stops -> Direct` on the results page.
 - Before submitting, verify origin, destination, dates, travelers, cabin, and hotel state.
 
+## Flight Log
+
+Before reporting flight search results, update `$HOME/flights.log`.
+
+Use this plain text row format under each destination block:
+
+```text
+| PATH | DATES | PRICE | INFO | SOURCE |
+| KRK ⇄ TIA | 2026-09-16 → 2026-09-24 | 681 zł | przesiadka 1x | esky |
+```
+
+Rules:
+
+- Read the existing file first and preserve rows from other sources and destinations.
+- Use `DIRECT` in `INFO` when there is no layover or no-result note.
+- Use `-` in `PRICE` when there is no flight price, with the reason in `INFO`.
+- Use `esky` as `SOURCE`.
+- Keep separate rows for direct and non-direct options on the same route/date.
+- If a matching row already exists for the same `PATH`, `DATES`, `INFO`, and `SOURCE`, replace its price with the newest observed price.
+- Group new rows under the matching destination section; create a section only when needed.
+
 ## Fast Results Extraction
 
 When origin, destination, dates, cabin, and passenger count are already known, use the eSky results URL directly in the existing real Chrome tab:

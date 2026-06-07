@@ -62,6 +62,27 @@ Direct URL guardrails:
 - Do not use filter sidebar prices as flight-card prices. If the sidebar has `1 przesiadka od ...` or airline prices but the result list says no flights match the active filters, report no matching flights.
 - In batch comparisons, record or print each completed route immediately. If CAPTCHA, 404, or timeout interrupts the run, report the last completed route and resume from the interrupted route after user input or manual UI setup.
 
+## Flight Log
+
+Before reporting flight search results, update `$HOME/flights.log`.
+
+Use this plain text row format under each destination block:
+
+```text
+| PATH | DATES | PRICE | INFO | SOURCE |
+| KRK ⇄ TIA | 2026-09-16 → 2026-09-24 | 1196 zł | DIRECT | skyscanner |
+```
+
+Rules:
+
+- Read the existing file first and preserve rows from other sources and destinations.
+- Use `DIRECT` in `INFO` when there is no layover or no-result note.
+- Use `-` in `PRICE` when there is no flight price, with the reason in `INFO`.
+- Use `skyscanner` as `SOURCE`.
+- Keep separate rows for direct and non-direct options on the same route/date.
+- If a matching row already exists for the same `PATH`, `DATES`, `INFO`, and `SOURCE`, replace its price with the newest observed price.
+- Group new rows under the matching destination section; create a section only when needed.
+
 ## Learned KRK-Albania Example
 
 For Krakow to Albania, September 16-30, 2026, two adults:
