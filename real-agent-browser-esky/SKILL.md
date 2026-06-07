@@ -45,6 +45,70 @@ Ask for origin, destination, dates, and travelers unless already provided. Say t
 - The home form does not expose direct-only. Submit first, then apply `Stops -> Direct` on the results page.
 - Before submitting, verify origin, destination, dates, travelers, cabin, and hotel state.
 
+## Fast Results Extraction
+
+When origin, destination, dates, cabin, and passenger count are already known, use the eSky results URL directly in the existing real Chrome tab:
+
+```text
+https://www.esky.com/flights/search/ap/ORIGIN/ap/DEST?pa=2&sc=economy&departureDate=YYYY-MM-DD&returnDate=YYYY-MM-DD
+```
+
+Then wait for cards to load and extract from DOM. Do not use Playwright/Puppeteer; use `agent-browser --debug --cdp <port> eval ...`.
+
+Observed card selector:
+
+```js
+document.querySelectorAll("so-fsr-flight-card.clickable")
+```
+
+Parsing rules:
+
+- Ignore loading/scanning placeholders such as "We're flying you to great deals..." until priced flight cards are present.
+- Price appears as `NNN USD` or `N,NNN USD`; it is usually "Price for 2 passengers round trip" when `pa=2`.
+- Round-trip direct means the card contains exactly two `Direct flight` labels.
+- One direct leg plus one `1 stop` leg is not a direct round trip.
+- For layover markers, sum visible stop labels across outbound and return: `1 stop` = 1, `2 stops` = 2. Report `przesiadka xN` when `N > 0`.
+- If eSky exposes only stop counts and not layover airport names, report only the count; do not invent layover cities.
+- Keep both the direct round-trip price and the cheapest non-direct price when both are useful for comparison.
+- If collected results use more than one currency, ask the user whether to normalize currencies. The user must choose the target currency and provide the exchange rate, for example `1 USD = 3.68 PLN` or `1 PLN = 0.27 USD`. Do not infer or fetch a rate unless explicitly asked.
+- If the user provides a rate, convert with normal rounding, for example `Math.round(usd * rate)` for USD to PLN.
+
+Guardrails:
+
+- Check card text for `Nearby airports` and airport codes. eSky can show nearby-airport cards (for example `KTW`) even when the URL asks for `KRK`. Reject or clearly flag any card whose visible origin/return airport is not the requested exact airport unless the user explicitly allows nearby airports.
+- If no cards with prices load, report no observed eSky result for that route/date instead of guessing.
+- If the page shows CAPTCHA/access challenge, stop and ask the user to solve it manually.
+
+Reusable extraction shape:
+
+```js
+(() => {
+  const cards = [...document.querySelectorAll("so-fsr-flight-card.clickable")]
+    .map((card) => {
+      const text = card.innerText.replace(/\s+/g, " ").trim();
+      const priceMatch = text.match(/(\d[\d.,]*)\s*USD/);
+      if (!priceMatch) return null;
+      const direct = (text.match(/Direct flight/g) || []).length;
+      const stops = [...text.matchAll(/(\d) stops?/g)]
+        .reduce((sum, match) => sum + Number(match[1]), 0);
+      return {
+        price: Number(priceMatch[1].replace(/,/g, "")),
+        direct,
+        stops,
+        text,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.price - b.price);
+
+  return {
+    direct: cards.find((card) => card.direct === 2) || null,
+    nonDirect: cards.find((card) => card.direct !== 2) || null,
+    top: cards.slice(0, 5),
+  };
+})()
+```
+
 ## Date Picker Notes
 
 - The eSky date picker may expose only month-level text in accessibility snapshots.

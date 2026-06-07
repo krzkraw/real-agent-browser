@@ -36,6 +36,7 @@ Ask for origin, destination, dates, and travelers unless already provided. Menti
 - Check login state from the header/profile UI, not footer links. A footer `Sign in`/`Zaloguj sie` link can exist even when the header shows profile access.
 - If the user is not logged in or the state is unclear, ask whether they want to log in manually. If they choose to log in, wait for `OK`; do not automate credentials.
 - If Skyscanner presents CAPTCHA or an access challenge, stop and ask the user to solve it manually. Do not bypass or automate the challenge.
+- CAPTCHA can appear periodically even during otherwise valid real-profile browsing. After the user solves it and says `OK`, continue in the same tab and CDP port from the interrupted route; do not restart in a new browser.
 
 ## Safer Search Flow
 
@@ -49,6 +50,17 @@ https://www.skyscanner.pl/transport/loty/krk/tira/260916/260930/?adultsv2=2&cabi
 ```
 
 Always re-check live page state after navigation because prices, filters, and availability change.
+
+Direct URL guardrails:
+
+- Do not guess Skyscanner airport slugs. A wrong slug can produce a Skyscanner 404 page, for example a page headed `Nie znaleziono strony` / `Not found`.
+- If a direct URL returns 404, unknown state, or no route-specific results, go back to the Skyscanner homepage and choose the parameters manually through the UI. Use the resulting URL only after Skyscanner itself generated it.
+- Do not read prices while the result list is still loading. Wait until the flight card or an explicit no-results card is visible, then wait at least 3 more seconds and confirm the loading/progress text disappeared.
+- For Polish UI, loading text observed includes `Trwa wczytywanie wyników`, `Sprawdzono ... z ... dostawców`, and `Wyszukiwanie ...`; no-results text observed includes `Niestety nie ma żadnych lotów pasujących do`.
+- Treat UI language strings as fallback only. Prefer language-independent DOM state when possible: loaded result cards, stable route header, price card containing outbound and return flight segments, and absence of progress indicators.
+- If a page shows hotels after no flight results, do not take hotel prices as flight prices. A valid flight price must come from a flight option card with outbound and return flight details.
+- Do not use filter sidebar prices as flight-card prices. If the sidebar has `1 przesiadka od ...` or airline prices but the result list says no flights match the active filters, report no matching flights.
+- In batch comparisons, record or print each completed route immediately. If CAPTCHA, 404, or timeout interrupts the run, report the last completed route and resume from the interrupted route after user input or manual UI setup.
 
 ## Learned KRK-Albania Example
 
