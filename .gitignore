@@ -1,0 +1,17 @@
+.DS_Store
+
+# Never commit browser profiles or copied auth state.
+.real-agent-browser/
+.real-agent-browser-beta/
+chrome-profile/
+chrome-profile-beta/
+profiles/
+*.cookies
+*.har
+
+# Runtime and cache output.
+*.log
+*.pid
+__pycache__/
+.pytest_cache/
+

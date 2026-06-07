@@ -1,0 +1,4 @@
+interface:
+  display_name: "Real Agent Browser"
+  short_description: "Launch real Chrome via profile CDP"
+  default_prompt: "Use $real-agent-browser to launch my real Chrome profile over CDP."

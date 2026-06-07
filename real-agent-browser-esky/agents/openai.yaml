@@ -1,0 +1,4 @@
+interface:
+  display_name: "Real Agent Browser eSky"
+  short_description: "Use real Chrome for eSky flows"
+  default_prompt: "Use $real-agent-browser-esky to search eSky flights in my real Chrome profile."

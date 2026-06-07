@@ -1,0 +1,4 @@
+interface:
+  display_name: "Real Agent Browser Skyscanner"
+  short_description: "Use real Chrome for Skyscanner flows"
+  default_prompt: "Use $real-agent-browser-skyscanner to search flights in my real Chrome profile."
