@@ -1,0 +1,4 @@
+interface:
+  display_name: "Why Not Scrape Both"
+  short_description: "Compare flights on Skyscanner and eSky.com"
+  default_prompt: "Use $why-not-scrape-both to scrape and verify flight prices on Skyscanner and eSky.com in my real Chrome profile."

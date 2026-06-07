@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect, print, probe, and launch real Chrome CDP sessions."""
+"""Inspect, print, probe, and launch macOS real Chrome CDP sessions."""
 
 from __future__ import annotations
 
@@ -205,4 +205,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

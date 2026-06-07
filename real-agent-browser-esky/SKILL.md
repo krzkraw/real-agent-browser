@@ -40,9 +40,9 @@ Ask for origin, destination, dates, and travelers unless already provided. Say t
 ## Search Flow
 
 - Navigate in the existing real Chrome tab or create a CDP tab; do not use `agent-browser open`.
-- Use `https://www.esky.com` by default. Use another locale such as `https://www.esky.pl` only when the user explicitly asks for it or when testing language/locale behavior.
+- Use `https://www.esky.com` by default. Use another eSky locale only when the user explicitly asks for it or when testing language/locale behavior.
 - eSky can default the origin from location, so always verify and clear the origin field before entering a requested airport.
-- Prefer exact airport choices over city/country choices. For `Krakow`, choose `(KRK) Balice`; for Albania direct flights, choose `(TIA) Mother Teresa`.
+- Prefer exact airport-code choices over city, country, or region choices when possible.
 - The home form does not expose direct-only. Submit first, then apply `Stops -> Direct` on the results page.
 - Before submitting, verify origin, destination, dates, travelers, cabin, and hotel state.
 
@@ -54,7 +54,7 @@ Use this plain text row format under each destination block:
 
 ```text
 | PATH | DATES | PRICE | INFO | SOURCE |
-| KRK ⇄ TIA | 2026-09-16 → 2026-09-24 | 681 zł | przesiadka 1x | esky |
+| ORIGIN ⇄ DEST | YYYY-MM-DD → YYYY-MM-DD | 1234 zł | przesiadka 1x | esky |
 ```
 
 Rules:
@@ -69,7 +69,7 @@ Rules:
 
 ## Fast Results Extraction
 
-When origin, destination, dates, cabin, and passenger count are already known, use the eSky results URL directly in the existing real Chrome tab. Default domain is `www.esky.com`; swap only the domain, not the path/query shape, when the user asks for a locale such as `www.esky.pl`:
+When origin, destination, dates, cabin, and passenger count are already known, use the eSky results URL directly in the existing real Chrome tab. Default domain is `www.esky.com`; swap only the domain, not the path/query shape, when the user explicitly asks for another eSky locale:
 
 ```text
 https://www.esky.com/flights/search/ap/ORIGIN/ap/DEST?pa=2&sc=economy&departureDate=YYYY-MM-DD&returnDate=YYYY-MM-DD
@@ -95,7 +95,7 @@ document.querySelectorAll("so-fsr-flight-card.clickable")
 Parsing rules:
 
 - Ignore loading/scanning placeholders such as "We're flying you to great deals..." or `Wlatujemy w strefę okazji` until priced flight cards or explicit no-results are stable.
-- Price appears as `NNN zł`, `NNN USD`, `N,NNN USD`, or localized variants. On eSky.com, expect USD unless the site/user locale changes currency; on eSky.pl, expect PLN from `zł`. It is usually the price for 2 passengers round trip when `pa=2`.
+- Price appears as `NNN zł`, `NNN USD`, `N,NNN USD`, or localized variants. On eSky.com, expect USD unless the site/user locale changes currency. Localized eSky sites may show local currency. It is usually the price for 2 passengers round trip when `pa=2`.
 - Round-trip direct means the card contains exactly two direct-flight labels: `Direct flight` or `Lot bezpośredni`.
 - One direct leg plus one `1 stop` / `1 przesiadka` leg is not a direct round trip.
 - For layover markers, sum visible stop labels across outbound and return: `1 stop` / `1 przesiadka` = 1, `2 stops` / `2 przesiadki` = 2. Report `przesiadka xN` when `N > 0`.
@@ -106,7 +106,7 @@ Parsing rules:
 
 Guardrails:
 
-- Check card text for `Nearby airports` and airport codes. eSky can show nearby-airport cards (for example `KTW`) even when the URL asks for `KRK`. Reject or clearly flag any card whose visible origin/return airport is not the requested exact airport unless the user explicitly allows nearby airports.
+- Check card text for `Nearby airports` and airport codes. eSky can show nearby-airport cards even when the URL asks for an exact airport. Reject or clearly flag any card whose visible origin, return origin, destination, or return destination airport code differs from the requested exact airport unless the user explicitly allows nearby airports.
 - If no cards with prices load, report no observed eSky result for that route/date instead of guessing.
 - If the page shows CAPTCHA/access challenge, stop and ask the user to solve it manually.
 
@@ -148,25 +148,12 @@ Reusable extraction shape:
 - If individual day cells are not exposed as refs, locate visible calendar day cells in DOM and click the center of the target day with pointer/mouse events.
 - Confirm dates from input values after selection, e.g. `dates_from = 16 Sep 2026`, `dates_to = 30 Sep 2026`.
 
-## Learned KRK-Albania Example
+## Direct-Only Filter
 
-For Krakow to Albania, September 16-30, 2026, two adults:
-
-- Origin: choose `(KRK) Balice`.
-- Destination: eSky does not offer `Albania` as a useful country target in the flight form; choose `(TIA) Mother Teresa`.
-- Dates: outbound `16 Sep 2026`, return `30 Sep 2026`.
-- Travelers: `2 people`.
-- Defaults used: round trip, economy, exact airports, hotel search off, no extra filters before results.
-- Results route observed:
-
-```text
-https://www.esky.com/flights/search/ap/KRK/ap/TIA?pa=2&sc=economy&departureDate=2026-09-16&returnDate=2026-09-30
-```
-
-- Direct-only filter observed:
+Observed direct-only filter shape:
 
 ```text
 &filters=%7B%22Transfers%22:%5B%22None%22%5D%7D
 ```
 
-Observed direct results included Wizz Air and Ryanair KRK-TIA outbound/return combinations. Report prices with "observed now" wording and remind the user that eSky availability and prices can change.
+Report prices with "observed now" wording and remind the user that eSky availability and prices can change.
