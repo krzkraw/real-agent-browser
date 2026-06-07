@@ -40,6 +40,7 @@ Ask for origin, destination, dates, and travelers unless already provided. Say t
 ## Search Flow
 
 - Navigate in the existing real Chrome tab or create a CDP tab; do not use `agent-browser open`.
+- Use `https://www.esky.com` by default. Use another locale such as `https://www.esky.pl` only when the user explicitly asks for it or when testing language/locale behavior.
 - eSky can default the origin from location, so always verify and clear the origin field before entering a requested airport.
 - Prefer exact airport choices over city/country choices. For `Krakow`, choose `(KRK) Balice`; for Albania direct flights, choose `(TIA) Mother Teresa`.
 - The home form does not expose direct-only. Submit first, then apply `Stops -> Direct` on the results page.
@@ -68,13 +69,22 @@ Rules:
 
 ## Fast Results Extraction
 
-When origin, destination, dates, cabin, and passenger count are already known, use the eSky results URL directly in the existing real Chrome tab:
+When origin, destination, dates, cabin, and passenger count are already known, use the eSky results URL directly in the existing real Chrome tab. Default domain is `www.esky.com`; swap only the domain, not the path/query shape, when the user asks for a locale such as `www.esky.pl`:
 
 ```text
 https://www.esky.com/flights/search/ap/ORIGIN/ap/DEST?pa=2&sc=economy&departureDate=YYYY-MM-DD&returnDate=YYYY-MM-DD
 ```
 
 Then wait for cards to load and extract from DOM. Do not use Playwright/Puppeteer; use `agent-browser --debug --cdp <port> eval ...`.
+
+Loading guard:
+
+- Never read results immediately after navigation or when the progress/scanning bar just finished.
+- Wait until either priced flight cards or an explicit no-results state is visible.
+- Confirm the page is no longer actively loading. Prefer stable DOM signals over text: priced card count/result count is stable and progress-bar/icon positions are unchanged. Some eSky locale pages can leave loader/progress elements and scanning text in the DOM after results are visible, so do not treat their mere presence as active loading.
+- After the page first looks loaded, wait at least 3 more seconds, then re-check that the same loaded/no-results state is still present and progress positions/card counts are unchanged before extracting.
+- If a route temporarily has zero cards but no explicit no-results message, keep waiting or report the route as inconclusive; do not log it as no flights.
+- eSky PL loading/scanning text observed includes `Wlatujemy w strefę okazji`, `Włączamy radary niskich cen`, and `Zapnij pasy`.
 
 Observed card selector:
 
@@ -84,11 +94,11 @@ document.querySelectorAll("so-fsr-flight-card.clickable")
 
 Parsing rules:
 
-- Ignore loading/scanning placeholders such as "We're flying you to great deals..." until priced flight cards are present.
-- Price appears as `NNN USD` or `N,NNN USD`; it is usually "Price for 2 passengers round trip" when `pa=2`.
-- Round-trip direct means the card contains exactly two `Direct flight` labels.
-- One direct leg plus one `1 stop` leg is not a direct round trip.
-- For layover markers, sum visible stop labels across outbound and return: `1 stop` = 1, `2 stops` = 2. Report `przesiadka xN` when `N > 0`.
+- Ignore loading/scanning placeholders such as "We're flying you to great deals..." or `Wlatujemy w strefę okazji` until priced flight cards or explicit no-results are stable.
+- Price appears as `NNN zł`, `NNN USD`, `N,NNN USD`, or localized variants. On eSky.com, expect USD unless the site/user locale changes currency; on eSky.pl, expect PLN from `zł`. It is usually the price for 2 passengers round trip when `pa=2`.
+- Round-trip direct means the card contains exactly two direct-flight labels: `Direct flight` or `Lot bezpośredni`.
+- One direct leg plus one `1 stop` / `1 przesiadka` leg is not a direct round trip.
+- For layover markers, sum visible stop labels across outbound and return: `1 stop` / `1 przesiadka` = 1, `2 stops` / `2 przesiadki` = 2. Report `przesiadka xN` when `N > 0`.
 - If eSky exposes only stop counts and not layover airport names, report only the count; do not invent layover cities.
 - Keep both the direct round-trip price and the cheapest non-direct price when both are useful for comparison.
 - If collected results use more than one currency, ask the user whether to normalize currencies. The user must choose the target currency and provide the exchange rate, for example `1 USD = 3.68 PLN` or `1 PLN = 0.27 USD`. Do not infer or fetch a rate unless explicitly asked.
@@ -107,13 +117,14 @@ Reusable extraction shape:
   const cards = [...document.querySelectorAll("so-fsr-flight-card.clickable")]
     .map((card) => {
       const text = card.innerText.replace(/\s+/g, " ").trim();
-      const priceMatch = text.match(/(\d[\d.,]*)\s*USD/);
+      const priceMatch = text.match(/(\d[\d\s\u00a0.,]*)\s*(zł|USD)/);
       if (!priceMatch) return null;
-      const direct = (text.match(/Direct flight/g) || []).length;
-      const stops = [...text.matchAll(/(\d) stops?/g)]
+      const direct = (text.match(/Direct flight|Lot bezpośredni/g) || []).length;
+      const stops = [...text.matchAll(/(\d+)\s*(?:stops?|przesiad\w*)/g)]
         .reduce((sum, match) => sum + Number(match[1]), 0);
       return {
-        price: Number(priceMatch[1].replace(/,/g, "")),
+        price: Number(priceMatch[1].replace(/[\s\u00a0.]/g, "").replace(",", ".")),
+        currency: priceMatch[2],
         direct,
         stops,
         text,
