@@ -11,10 +11,11 @@ Role: `flight_master`.
 3. Create run directory with only `skyscanner/` and `esky/` portal folders.
 4. Initialize all portal logs with `| PATH | DATES | PRICE | INFO | SOURCE | EVIDENCE |`.
 5. Start exactly one browser scraper worker: `flight_scraper`.
-6. Monitor progress every few minutes: route index, portal, OK/fail/pending counts, latest screenshot, CAPTCHA/404 state.
-7. After scraping finishes or pauses with no browser work, start `verifier_skyscanner` and `verifier_esky`.
-8. Do not verify in-band. If worker capacity is exhausted, close completed workers, retry once, then stop with pending rows listed.
-9. Do not merge. Stop before merge and require model switch plus `OK MERGE`.
+6. Check login/header state on both portals. If login state is unclear or the user is not logged in, ask whether they want to log in manually. Wait for `OK` only if they choose login; after `OK`, do not re-check or second-guess login state.
+7. Monitor progress every few minutes: route index, portal, OK/fail/pending counts, latest screenshot, CAPTCHA/404 state.
+8. After scraping finishes or pauses with no browser work, start `verifier_skyscanner` and `verifier_esky`.
+9. Do not verify in-band. If worker capacity is exhausted, close completed workers, retry once, then stop with pending rows listed.
+10. Do not merge. Stop before merge and require model switch plus `OK MERGE`.
 
 ## Scraper Prompt
 
@@ -38,7 +39,7 @@ Inputs:
 - CDP port
 - fixed `skyscanner` tab/window
 - fixed `esky` tab/window for `https://www.esky.com`
-- currency rule, if user provided one
+- currency rule, only if user provided one
 
 Hard rules:
 
@@ -48,18 +49,20 @@ Hard rules:
 - Do not self-approve.
 - Do not write `$HOME/flights.log`.
 - Process route-first: `route -> skyscanner -> esky`.
+- Use defaults unless user overrides them: 2 adults, round trip, economy, direct-only, exact airports, nearby airports off, hotels off, no extra filters.
 
 For every portal attempt:
 
 1. Open/use the assigned portal tab/window.
-2. Search exact requested origin/destination airports and dates.
-3. Use defaults unless user overrode them: round trip, economy, direct-only, exact airports, hotels off, no extra filters.
+2. Check login/header state. If login state is unclear or the user is not logged in, report it to the orchestrator before searching. If the user chooses manual login and later says `OK`, continue without re-checking login state.
+3. Search exact requested origin/destination airports and dates.
 4. Wait until flight cards or explicit no-results are visible.
 5. If a progress/scanning bar appeared, wait for it to finish, then wait at least 3 seconds and re-check stable cards/no-results.
 6. Reject empty pages without explicit no-results as inconclusive.
 7. Capture a card/no-results crop as `screen:` when possible and full-page context as `page:` when possible.
 8. Append every candidate to `${RUN_DIR}/PORTAL/flights.log` as `// PENDING`.
 9. Append structured evidence to `${RUN_DIR}/PORTAL/raw.jsonl` with `verdict: "PENDING"`.
+10. If multiple currencies appear and no conversion rule was provided, pause logging merge-ready rows and ask the orchestrator to request a user decision: target currency plus rate, or keep separate currencies and stop before merge.
 
 Pending row:
 
@@ -106,8 +109,10 @@ Input:
   "fails_log": "$RUN_DIR/skyscanner/fails.log",
   "raw_jsonl": "$RUN_DIR/skyscanner/raw.jsonl",
   "baseline_log": "$HOME/flights.log",
-  "price_tolerance_pln": 100,
-  "price_tolerance_usd": 30
+  "target_currency": "user-selected or null",
+  "currency_rates": "user-provided rates or null",
+  "price_tolerance_target": 100,
+  "price_tolerance_source": 30
 }
 ```
 
@@ -126,7 +131,7 @@ OK only when:
 Smart updates:
 
 - Correct row price from screenshot when route/date/source match.
-- Accept small price drift up to `100 PLN`.
+- Accept small price drift up to the configured tolerance.
 - Accept stopover-to-`DIRECT` improvement.
 - Fail `DIRECT`-to-stopover downgrade unless another current direct row exists.
 - Fail any airport-code mismatch as `// NIE OK - visible airport does not match requested airport`.
@@ -156,9 +161,10 @@ Input:
   "fails_log": "$RUN_DIR/esky/fails.log",
   "raw_jsonl": "$RUN_DIR/esky/raw.jsonl",
   "baseline_log": "$HOME/flights.log",
-  "usd_to_pln": 3.68,
-  "price_tolerance_pln": 100,
-  "price_tolerance_usd": 30
+  "target_currency": "user-selected or null",
+  "currency_rates": "user-provided rates or null",
+  "price_tolerance_target": 100,
+  "price_tolerance_source": 30
 }
 ```
 
@@ -170,7 +176,7 @@ OK only when:
 - Visible airports match requested origin/destination exactly unless user allowed nearby airports.
 - Dates match the row.
 - Price is from the same visible flight option card as the itinerary.
-- USD was converted with the user-provided rate when a rate exists.
+- Price conversion, if present, used the user-provided target currency and rate.
 - `SOURCE` is exactly `esky`.
 - `DIRECT` means both outbound and return are direct.
 - `przesiadka Nx` matches visible total stops across both legs.
@@ -178,9 +184,9 @@ OK only when:
 Smart updates:
 
 - Correct row price from screenshot when route/date/source match.
-- Convert USD with `Math.round(usd * usd_to_pln)` and write PLN/zł to `flights.log`.
-- Preserve original USD in `raw.jsonl`.
-- Accept drift up to `100 PLN` after conversion or `30 USD` before conversion.
+- Convert only when the user provided a target currency and exchange rate. Use normal rounding and write the target currency to `flights.log`.
+- Preserve original price and currency in `raw.jsonl`.
+- Accept drift up to the configured target/source tolerance.
 - Accept stopover-to-`DIRECT` improvement.
 - Fail `DIRECT`-to-stopover downgrade unless another current direct row exists.
 - Fail any airport-code mismatch as `// NIE OK - visible airport does not match requested airport`.
@@ -217,7 +223,7 @@ Read only `// OK` rows from:
 Stop if:
 
 - any portal log contains `// PENDING`
-- any OK row contains `USD`
+- multiple currencies remain and the user did not provide a merge currency decision
 - any canonical output row would contain evidence/comment columns
 - merge would reduce route coverage unless user explicitly requested stale deletion
 

@@ -41,7 +41,7 @@ Check these routes on Skyscanner and eSky.com:
 ORIGIN ⇄ DEST — YYYY-MM-DD → YYYY-MM-DD
 ORIGIN ⇄ DEST — YYYY-MM-DD → YYYY-MM-DD
 2 adults, economy, direct only, exact airports, hotels off.
-Convert USD to PLN using 1 USD = 3.68 PLN.
+If prices appear in different currencies, ask me before converting.
 ```
 
 The orchestrator should:
@@ -52,6 +52,8 @@ The orchestrator should:
 4. Scrape route-first: `route -> skyscanner -> esky`.
 5. Start two verifier workers after scraping.
 6. Stop before merge and ask for model switch plus `OK MERGE`.
+
+The orchestrator should ask whether the user wants to log in manually when portal login state is unclear or logged out. Currency conversion requires a user-selected target currency and rate.
 
 ## Verification Rules
 

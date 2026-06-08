@@ -18,7 +18,7 @@ Use $why-not-scrape-both.
 Check these routes on Skyscanner and eSky.com:
 ORIGIN ⇄ DEST — YYYY-MM-DD → YYYY-MM-DD
 2 adults, economy, direct only, exact airports, hotels off.
-Convert USD to PLN using 1 USD = 3.68 PLN.
+If prices appear in different currencies, ask me before converting.
 ```
 
 Runtime output:

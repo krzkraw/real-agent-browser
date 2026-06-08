@@ -34,7 +34,7 @@ Ask for origin, destination, dates, and travelers unless already provided. Menti
 
 - If a cookie banner appears, accept all cookies.
 - Check login state from the header/profile UI, not footer links. A footer `Sign in`/`Zaloguj sie` link can exist even when the header shows profile access.
-- If the user is not logged in or the state is unclear, ask whether they want to log in manually. If they choose to log in, wait for `OK`; do not automate credentials.
+- If the user is not logged in or the state is unclear, ask whether they want to log in manually. If they choose login, wait until the user says `OK` after finishing. Do not automate credentials and do not re-check or second-guess the login after `OK`; login is the user's choice. If they decline, continue as guest.
 - If Skyscanner presents CAPTCHA or an access challenge, stop and ask the user to solve it manually. Do not bypass or automate the challenge.
 - CAPTCHA can appear periodically even during otherwise valid real-profile browsing. After the user solves it and says `OK`, continue in the same tab and CDP port from the interrupted route; do not restart in a new browser.
 
@@ -79,6 +79,8 @@ Rules:
 - Keep separate rows for direct and non-direct options on the same route/date.
 - If a matching row already exists for the same `PATH`, `DATES`, `INFO`, and `SOURCE`, replace its price with the newest observed price.
 - Group new rows under the matching destination section; create a section only when needed.
+- If collected results use more than one currency, ask the user whether to normalize currencies. The user must choose the target currency and provide the exchange rate, for example `1 SOURCE = RATE TARGET`. Do not infer or fetch a rate unless explicitly asked.
+- If the user provides a rate, convert with normal rounding and keep the original price/currency in notes or structured evidence when available.
 
 ## Result Reporting
 

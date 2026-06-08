@@ -34,7 +34,7 @@ Ask for origin, destination, dates, and travelers unless already provided. Say t
 
 - If a cookie banner appears, accept all cookies.
 - Check login state from the header/account UI. On eSky, `My account` can open a login modal with email/password fields when the user is not logged in.
-- If the user is not logged in or the state is unclear, ask whether they want to log in manually. If they choose to log in, wait for `OK`; do not automate credentials.
+- If the user is not logged in or the state is unclear, ask whether they want to log in manually. If they choose login, wait until the user says `OK` after finishing. Do not automate credentials and do not re-check or second-guess the login after `OK`; login is the user's choice. If they decline, continue as guest.
 - If eSky presents CAPTCHA or an access challenge, stop and ask the user to solve it manually. Do not bypass or automate the challenge.
 
 ## Search Flow
@@ -84,7 +84,7 @@ Loading guard:
 - Confirm the page is no longer actively loading. Prefer stable DOM signals over text: priced card count/result count is stable and progress-bar/icon positions are unchanged. Some eSky locale pages can leave loader/progress elements and scanning text in the DOM after results are visible, so do not treat their mere presence as active loading.
 - After the page first looks loaded, wait at least 3 more seconds, then re-check that the same loaded/no-results state is still present and progress positions/card counts are unchanged before extracting.
 - If a route temporarily has zero cards but no explicit no-results message, keep waiting or report the route as inconclusive; do not log it as no flights.
-- eSky PL loading/scanning text observed includes `Wlatujemy w strefę okazji`, `Włączamy radary niskich cen`, and `Zapnij pasy`.
+- Localized eSky pages may leave loading/scanning text in the DOM after results are visible; use stable cards/no-results, not text alone.
 
 Observed card selector:
 
@@ -94,15 +94,15 @@ document.querySelectorAll("so-fsr-flight-card.clickable")
 
 Parsing rules:
 
-- Ignore loading/scanning placeholders such as "We're flying you to great deals..." or `Wlatujemy w strefę okazji` until priced flight cards or explicit no-results are stable.
+- Ignore loading/scanning placeholders until priced flight cards or explicit no-results are stable.
 - Price appears as `NNN zł`, `NNN USD`, `N,NNN USD`, or localized variants. On eSky.com, expect USD unless the site/user locale changes currency. Localized eSky sites may show local currency. It is usually the price for 2 passengers round trip when `pa=2`.
 - Round-trip direct means the card contains exactly two direct-flight labels: `Direct flight` or `Lot bezpośredni`.
 - One direct leg plus one `1 stop` / `1 przesiadka` leg is not a direct round trip.
 - For layover markers, sum visible stop labels across outbound and return: `1 stop` / `1 przesiadka` = 1, `2 stops` / `2 przesiadki` = 2. Report `przesiadka xN` when `N > 0`.
 - If eSky exposes only stop counts and not layover airport names, report only the count; do not invent layover cities.
 - Keep both the direct round-trip price and the cheapest non-direct price when both are useful for comparison.
-- If collected results use more than one currency, ask the user whether to normalize currencies. The user must choose the target currency and provide the exchange rate, for example `1 USD = 3.68 PLN` or `1 PLN = 0.27 USD`. Do not infer or fetch a rate unless explicitly asked.
-- If the user provides a rate, convert with normal rounding, for example `Math.round(usd * rate)` for USD to PLN.
+- If collected results use more than one currency, ask the user whether to normalize currencies. The user must choose the target currency and provide the exchange rate, for example `1 SOURCE = RATE TARGET`. Do not infer or fetch a rate unless explicitly asked.
+- If the user provides a rate, convert with normal rounding, for example `Math.round(sourceAmount * rate)`.
 
 Guardrails:
 
