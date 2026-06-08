@@ -15,7 +15,10 @@ Role: `flight_master`.
 7. Monitor progress every few minutes: route index, portal, OK/fail/pending counts, latest screenshot, CAPTCHA/404 state.
 8. After scraping finishes or pauses with no browser work, start `verifier_skyscanner` and `verifier_esky`.
 9. Do not verify in-band. If worker capacity is exhausted, close completed workers, retry once, then stop with pending rows listed.
-10. Do not merge. Stop before merge and require model switch plus `OK MERGE`.
+10. Do not write canonical `$HOME/flights.log` during scrape or verification.
+11. Do not merge. Stop before merge and require model switch plus `OK MERGE`.
+12. Final scrape/verify report must include run directory path, OK/fail/pending counts per portal, CAPTCHA pauses per portal, files created, and whether canonical `$HOME/flights.log` was written.
+13. End scrape/verify with `STOP. Scrape/verify complete. Provide this session id to the reviewer.`
 
 ## Scraper Prompt
 

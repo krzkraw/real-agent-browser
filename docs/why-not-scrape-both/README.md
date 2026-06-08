@@ -30,6 +30,7 @@ $HOME/flights_runs/YYYYMMDD_HHMMSS/
 ```
 
 Rows in portal logs keep evidence. Canonical `$HOME/flights.log` never keeps evidence columns.
+Scrape and verify phases do not write canonical `$HOME/flights.log`; only the later merger may do that after explicit approval.
 
 ## How To Start
 
@@ -52,6 +53,7 @@ The orchestrator should:
 4. Scrape route-first: `route -> skyscanner -> esky`.
 5. Start two verifier workers after scraping.
 6. Stop before merge and ask for model switch plus `OK MERGE`.
+7. Final scrape/verify output includes the run directory, per-portal OK/fail/pending counts, CAPTCHA pauses, files created, and whether canonical `$HOME/flights.log` was written.
 
 The orchestrator should ask whether the user wants to log in manually when portal login state is unclear or logged out. Currency conversion requires a user-selected target currency and rate.
 

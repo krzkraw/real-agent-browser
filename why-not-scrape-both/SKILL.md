@@ -64,6 +64,8 @@ Canonical `$HOME/flights.log` rows use exactly:
 
 `SOURCE` is always `skyscanner` or `esky`.
 
+During scrape and verification, do not write canonical `$HOME/flights.log`. Only the later merger step may update it after explicit user approval.
+
 ## Browser Rules
 
 - Use user-owned real Chrome over CDP only.
@@ -170,6 +172,24 @@ Smart replacement:
 - Preserve old canonical rows for routes not covered by the current run unless the user explicitly asked for stale deletion.
 - If any row still contains `USD`, `PENDING`, or evidence columns, stop and fix before writing canonical output.
 - If multiple currencies remain because the user did not provide a conversion decision, stop before merge and report the currency conflict.
+
+## Final Scrape/Verify Report
+
+After scraping and verification, report:
+
+- Run directory path.
+- OK count per portal.
+- Fail count per portal.
+- Pending count per portal.
+- CAPTCHA pauses per portal.
+- Files created.
+- Whether canonical `$HOME/flights.log` was written. This should be `no` unless the user explicitly approved the merger step.
+
+Do not merge at the end of scrape/verify. End the scrape/verify phase with:
+
+```text
+STOP. Scrape/verify complete. Provide this session id to the reviewer.
+```
 
 ## Subagent Prompts
 
